@@ -1,0 +1,1019 @@
+---
+title: "Roller Coaster Data - Cleaning"
+output: html_notebook
+---
+
+This R Notebook serves as the initial cleaning script for the roller coaster data. 
+
+Notes:
+
+- pulled from Kaggle
+- Plenty of open entry columns that will have to be cleaned
+- Initial data size is 1087 x 56, but it seems like there are a few duplicated roller coaster entries that will have to be de-duped.
+- Ratings have been pulled from Captain Coaster
+
+## Captain Coaster Ranking System
+
+Captain Coaster ranks coasters using a pairwise comparison system based on user ratings and ordered Tops. The more detailed your ratings, the more influence you have on the rankings.
+
+### Ranking Principles
+
+Each coaster is compared in duels against all others, with only mutual riders’ preferences determining the winner. A coaster that wins all its duels becomes #1, while others are ranked based on their duel results. The ranking is not a popularity contest—rare coasters have the same opportunity as popular ones.
+
+### User Influence
+The more coasters you rate and rank, the more comparisons you contribute, increasing your influence. However, no single person can drastically alter the rankings, as majority opinion always prevails. This system encourages riders to rate all their coasters and ride more to refine the rankings.
+
+
+Read in the initial data.
+
+```{r}
+df <- read.csv("/Users/brian/Downloads/COASTER/coaster_db.csv")
+ratings <- read.csv("/Users/brian/Downloads/COASTER/coaster_data_full_full.csv")
+```
+
+
+# Data Cleaning
+
+### Imputing Locations
+
+- Lists pulled from Cedar Fair website + online information
+
+Enter Cedar Fair roller coasters initially for and change these locations
+
+```{r}
+df <- df %>%
+   mutate(Location = case_when(
+      coaster_name %in% c("RailBlazer", "Gold Striker", "Shivering Timbers", 
+                          "Flight Deck (California's Great America)", "Patriot (California's Great America)", "Demon (roller coaster)", "The Grizzly") ~ "California's Great America",
+      coaster_name %in% c("Thunderhawk (Michigan's Adventure)", "Wolverine Wildcat", "Corkscrew (Michigan's Adventure)", "Mad Mouse (Michigan's Adventure)", "Woodstock Express (Michigan's Adventure)") ~ "Michigan's Adventure",
+      coaster_name %in% c("Corkscrew (Valleyfair)", "Cosmic Coaster (Valleyfair)", "Excalibur (Valleyfair)", "High Roller (Valleyfair)", "Mad Mouse (Valleyfair)", "Renegade (roller coaster)",  "Steel Venom (Valleyfair)", "Wild Thing (Valleyfair)") ~ "Valleyfair",
+      coaster_name %in% c("Mamba (roller coaster)", "Prowler (roller coaster)", "Patriot (Worlds of Fun)", "Timber Wolf (roller coaster)", "Spinning Dragons", "Boomerang (Worlds of Fun)", "Cosmic Coaster (Worlds of Fun)") ~ "Worlds of Fun",
+      coaster_name %in% c("Hydra the Revenge", "Steel Force", "Talon (roller coaster)", "Possessed (roller coaster)", "Thunderhawk (Dorney Park)", "Woodstock Express (Dorney Park)") ~ "Dorney Park",
+      coaster_name %in% c("GhostRider (roller coaster)", "Silver Bullet (Knott's Berry Farm)", "HangTime (roller coaster)", "Xcelerator", "Montezooma's Revenge", "Jaguar!", "Pony Express (roller coaster)", "Coast Rider", "Sierra Sidewinder", "Timberline Twister", "Windjammer Surf Racers") ~ "Knott's Berry Farm",
+      coaster_name %in% c("Anaconda (roller coaster)", "Apple Zapple (Kings Dominion)", "Backlot Stunt Coaster", "Dominator (roller coaster)", "Flight of Fear", "Grizzly (Kings Dominion)", 
+"Racer 75", "Tumbili", "Woodstock Express (Kings Dominion)", "Twisted Timbers") ~ "Kings Dominion",
+      coaster_name %in% c("Fury 325", "Intimidator (roller coaster)", "Copperhead Strike", "Afterburn (roller coaster)", "Nighthawk (roller coaster)", "Carolina Cyclone", "Carolina Goldrusher", "Hurler (roller coaster)", "Ricochet (Carowinds)", "Vortex (Carowinds)", "Woodstock Express (Carowinds)", "The Flying Cobras", "Kiddy Hawk", "Wilderness Run (Carowinds)", "Thunder Road (roller coaster)") ~ "Carowinds",
+      coaster_name %in% c("Leviathan (Canada's Wonderland)", "Behemoth (roller coaster)", "Yukon Striker", "Vortex (Canada's Wonderland)", "Mighty Canadian Minebuster", "The Bat (Canada's Wonderland)", "Dragon Fyre", "Thunder Run (Canada's Wonderland)", "Time Warp (roller coaster)", 
+"Flight Deck (Canada's Wonderland)", "Wilde Beast", "Ghoster Coaster (Canada's Wonderland)", 
+                          "Silver Streak (Canada's Wonderland)") ~ "Canada's Wonderland",
+      coaster_name %in% c("Adventure Express", "Banshee (roller coaster)", "Diamondback (Kings Island)", "Invertigo (Kings Island)", "Mystic Timbers", "Orion (roller coaster)", "The Bat (Kings Island; opened 1993)", "The Beast (roller coaster)", "The Racer (Kings Island)", "Woodstock Express (Kings Island)", "The Great Pumpkin Coaster") ~ "Kings Island",
+      coaster_name %in% c("Steel Vengeance", "Millennium Force", "Top Thrill Dragster", "Magnum XL-200", "Maverick (roller coaster)", "GateKeeper (roller coaster)", "Valravn (roller coaster)", "Raptor (Cedar Point)", "Rougarou (roller coaster)", "Blue Streak (Cedar Point)", "Gemini (roller coaster)", "Corkscrew (Cedar Point)", "Iron Dragon (roller coaster)", "Cedar Creek Mine Ride") ~ "Cedar Point",
+      TRUE ~ Location 
+   )) %>%
+  arrange(coaster_name)
+```
+
+
+Use grepl to consolidate locations to similar names - make use of "|" 
+
+```{r}
+df <- df %>%
+  mutate(
+    Location = case_when(
+      grepl("Universal Orlando Resort, Orlando, Florida, United States|Universal's Islands of Adventure", Location, ignore.case = TRUE) ~ "Universal Studios Florida",
+      grepl("Six Flags México", Location, ignore.case = TRUE) ~ "Six Flags Mexico",
+      grepl("Astrow", Location, ignore.case = TRUE) ~ "Six Flags AstroWorld",
+      grepl("Silverwood", Location, ignore.case = TRUE) ~ "Silverwood",
+      grepl("Great Escape", Location, ignore.case = TRUE) ~ "Six Flags Great Escape",
+      grepl("Fårup Somm", Location, ignore.case = TRUE) ~ "Fårup Sommerland",
+      grepl("Fun Spot America", Location, ignore.case = TRUE) ~ "Fun Spot America",
+      grepl("Adventureland", Location, ignore.case = TRUE) ~ "Adventureland",
+      grepl("Epcot|Disney's Animal Kingdom|Disney's Hollywood Studios|Magic Kingdom|Walt Disney Studios Park", Location, ignore.case = TRUE) ~ "Disney World (Florida)",
+      grepl("Dorney Park", Location, ignore.case = TRUE) ~ "Dorney Park",
+      grepl("Fantasy Island", Location, ignore.case = TRUE) ~ "Fantasy Island",
+      grepl("Flamingo Land", Location, ignore.case = TRUE) ~ "Flamingo Land",
+      grepl("Drayton Manor", Location, ignore.case = TRUE) ~ "Drayton Manor Theme Park",
+      grepl("Crystal Beach", Location, ignore.case = TRUE) ~ "Crystal Beach Park",
+      grepl("Cleveland, Ohio, United States", Location, ignore.case = TRUE) ~ "Euclid Beach Park",
+      grepl("Clementon", Location, ignore.case = TRUE) ~ "Clementon Park",
+      grepl("Busch Gardens Tampa", Location, ignore.case = TRUE) ~ "Busch Gardens Tampa Bay",
+      grepl("Europa Park|Europa-Park", Location, ignore.case = TRUE) ~ "Europa Park",
+      grepl("2904 Fantasy Way Myrtle Beach, South Carolina, U.S.", Location, ignore.case = TRUE) ~ "Freestyle Music Park",
+      grepl("63rd and N.W. Expressway, Oklahoma City, Oklahoma, U.S.", Location, ignore.case = TRUE) ~ "Wedgewood Village Amusement Park",
+      grepl("Alton", Location, ignore.case = TRUE) ~ "Alton Towers",
+      grepl("Argentina, Villa Soldati, Buenos Aires", Location, ignore.case = TRUE) ~ "Parque de la Ciudad",
+      grepl("Arlington, Texas, U.S.", Location, ignore.case = TRUE) ~ "Six Flags Over Texas",
+      grepl("Colorado roller coaster", Location, ignore.case = TRUE) ~ "Glenwood Caverns Adventure Park",
+      grepl("S&S Free Spin", Location, ignore.case = TRUE) ~ "Six Flags Fiesta Texas",
+      grepl("Heide Park Resort", Location, ignore.case = TRUE) ~ "Heide Park",
+      grepl("Jackson, New Jersey, United States", Location, ignore.case = TRUE) ~ "Six Flags Great Adventure",
+      grepl("Kennywood Park", Location, ignore.case = TRUE) ~ "Kennywood",
+      grepl("Lagoon Amusement Park", Location, ignore.case = TRUE) ~ "Lagoon",
+      grepl("Luna Park", Location, ignore.case = TRUE) ~ "Luna Park",
+      grepl("Orlando, FloridaKissimmee, Florida", Location, ignore.case = TRUE) ~ "Fun Spot America",
+      grepl("Thorpe", Location, ignore.case = TRUE) ~ "Thorpe Park",
+      TRUE ~ Location
+    )
+  )
+```
+
+
+Do the same for coaster name strings - if name contains valuable information on park locations, use that.
+
+```{r}
+df <- df %>%
+  mutate(
+    Location = case_when(
+      grepl("Alpine Bobsled", coaster_name, ignore.case = TRUE) ~ "Six Flags Great Escape",
+      grepl("American Dreier Looping", coaster_name, ignore.case = TRUE) ~ "Indiana Beach",
+      grepl("American Eagle (roller coaster)", coaster_name, ignore.case = TRUE) ~ "Six Flags Great America",
+      grepl("Batman The Escape", coaster_name, ignore.case = TRUE) ~ "Six Flags AstroWorld",
+      grepl("Battlestar Galactica (roller coaster)", coaster_name, ignore.case = TRUE) ~ "Universal Studios Singapore",
+      grepl("Batman & Robin: The Chiller|Lightnin' Loops", coaster_name, ignore.case = TRUE) ~ "Six Flags Great Adventure",
+      grepl("Dragon Challenge|Flight of the Hippogriff", coaster_name, ignore.case = TRUE) ~ "Universal Studios Florida",
+      grepl("Gotham City Gauntlet: Escape from Arkham Asylum", coaster_name, ignore.case = TRUE) ~ "Six Flags New England",
+      grepl("Kong (roller coaster)", coaster_name, ignore.case = TRUE) ~ "Six Flags Discovery Kingdom",
+      grepl("La Vibora", coaster_name, ignore.case = TRUE) ~ "Six Flags Over Texas",
+      grepl("Le Monstre", coaster_name, ignore.case = TRUE) ~ "La Ronde",
+      grepl("Lego Technic Test Track", coaster_name, ignore.case = TRUE) ~ "Legoland",
+      grepl("Lightning Racer", coaster_name, ignore.case = TRUE) ~ "Hersheypark",
+      grepl("Matterhorn Bobsleds", coaster_name, ignore.case = TRUE) ~ "Disneyland",
+      grepl("Mr. Freeze (roller coaster)", coaster_name, ignore.case = TRUE) ~ "Six Flags St. Louis",
+      grepl("Nightmare at Crack Axle Canyon", coaster_name, ignore.case = TRUE) ~ "Six Flags Great Escape",
+      grepl("Powder Keg", coaster_name, ignore.case = TRUE) ~ "Silver Dollar City",
+      grepl("RC Racer", coaster_name, ignore.case = TRUE) ~ "Disneyland",
+      grepl("Ragin' Cajun (roller coaster)|Roar (roller coaster)", coaster_name, ignore.case = TRUE) ~ "Six Flags America",
+      grepl("Rock 'n' Roller Coaster Starring Aerosmith|Seven Dwarfs Mine Train", coaster_name, ignore.case = TRUE) ~ "Disney World (Florida)",
+      grepl("Rolling Thunder (roller coaster)|The Dark Knight Coaster", coaster_name, ignore.case = TRUE) ~ "Six Flags Great Adventure",
+      grepl("Sand Serpent", coaster_name, ignore.case = TRUE) ~ "Busch Gardens Tampa Bay",
+      grepl("Shuttle Loop", coaster_name, ignore.case = TRUE) ~ "Kentucky Kingdom",
+      grepl("Soarin' Eagle", coaster_name, ignore.case = TRUE) ~ "Coney Island",
+      grepl("Stampida", coaster_name, ignore.case = TRUE) ~ "PortAventura Park",
+      grepl("Stinger (roller coaster)", coaster_name, ignore.case = TRUE) ~ "Dorney Park",
+      grepl("Superman: Escape from Krypton|Vipère (roller coaster)", coaster_name, ignore.case = TRUE) ~ "Six Flags Magic Mountain",
+      grepl("Superman: Ultimate Flight", coaster_name, ignore.case = TRUE) ~ "Six Flags Over Georgia",
+      grepl("The Gold Coaster", coaster_name, ignore.case = TRUE) ~ "Dreamworld",
+      grepl("The Joker's Revenge", coaster_name, ignore.case = TRUE) ~ "Six Flags Fiesta Texas",
+      grepl("Thunder Looper", coaster_name, ignore.case = TRUE) ~ "Alton Towers",
+      grepl("Two Face: The Flip Side", coaster_name, ignore.case = TRUE) ~ "Six Flags America",
+      grepl("Whizzer (roller coaster)", coaster_name, ignore.case = TRUE) ~ "Six Flags Great America",
+      grepl("Wild West Express Coaster", coaster_name, ignore.case = TRUE) ~ "Glenwood Caverns Adventure Park",
+      coaster_name == "Big Thunder Mountain Railroad (Disneyland)" ~ "Disneyland",
+      coaster_name == "Big Thunder Mountain Railroad (Tokyo Disneyland)" ~ "Tokyo Disneyland",
+      coaster_name == "Firebird (roller coaster)" ~ "Six Flags America",
+      coaster_name == "Zippin Pippin" ~ "Bay Beach",
+      coaster_name == "Mr. Freeze (roller coaster)" ~ "Six Flags St. Louis",
+      coaster_name == "Leviathan (Sea World)" ~ "Sea World (Australia)",
+      coaster_name == "Sea Viper (roller coaster)" ~ "Sea World (Australia)",
+      coaster_name == "Thrillseeker (roller coaster)" ~ "Sea World (Australia)",
+
+      TRUE ~ Location 
+    )
+  )
+
+```
+
+Some parks have essentially cloned rides, but Location listed as "Other". We'll write a function to ensure that each of the times these identical coaster names come up we write them to a different location.
+
+```{r}
+# Function to update Location based on coaster_name and locations
+update_location <- function(df, coaster_name, locations) {
+  df %>%
+    mutate(Location = ifelse(coaster_name == !!coaster_name & Location == "Other",
+                             locations[row_number() %% length(locations) + 1],
+                             Location))
+}
+
+# Apply the helper function to each case necessary
+
+df <- df %>%
+  update_location("Tron Lightcycle Power Run", c("Magic Kingdom", "Shanghai Disneyland")) %>%
+  update_location("Superman – Ride of Steel", c("Six Flags Darien Lake", "Six Flags America")) %>%
+  update_location("Batman: The Ride (S&S Free Spin)", c("Six Flags Fiesta Texas", "Six Flags Discovery Kingdom")) %>%
+  update_location("Super Grover's Box Car Derby", c("SeaWorld Orlando", "SeaWorld San Diego", "SeaWorld San Antonio")) %>%
+  update_location("Revenge of the Mummy", c("Universal Studios Florida", "Universal Studios Singapore")) %>%
+  update_location("Pandemonium (roller coaster)", c("Six Flags New England", "Six Flags Fiesta Texas", 
+                                                   "Six Flags St. Louis", "Six Flags Over Texas")) %>%
+  update_location("Flight of the Hippogriff", c("Universal Studios Florida", "Universal Studios Hollywood")) %>%
+  update_location("Batman: The Ride", c("Six Flags Great America", "Six Flags Magic Mountain", "Six Flags Over Georgia", 
+                                       "Six Flags Great Adventure", "Six Flags St. Louis", "Six Flags Over Texas")) %>%
+  update_location("Big Thunder Mountain Railroad", c("Disney World (Florida)", "Disneyland Park (Paris)"))
+```
+
+We also need a function that can use information from within the name of a roller coaster that may be able to determine its location. Many roller coasters list their name and then park name in parentheses. We'll pull that information only in cases where location is already listed as "Other".
+
+```{r}
+df <- df %>%
+  mutate(Location = if_else(
+    Location == "Other", 
+    sapply(coaster_name, function(coaster_name) {
+      
+      # Check if the coaster_name has parentheses
+      if (grepl("\\(.*\\)", coaster_name)) {
+        
+        # Extract the text inside parentheses
+        
+        park_name <- sub(".*\\((.*)\\).*", "\\1", coaster_name)
+        
+        # If the extracted park name is not "roller coaster", assign it as Location
+        
+        if (tolower(park_name) != "roller coaster") {
+          return(park_name)
+        }
+      }
+      # If no parentheses or "roller coaster", return "Other"
+      return("Other")
+    }),
+    Location
+  ))
+```
+
+
+Check the locations and make sure coaster names and locations line up.
+
+```{r}
+df %>% 
+  group_by(Location) %>%
+  arrange(Location) %>%
+  select(coaster_name, Location) %>%
+  arrange(desc(Location))
+```
+
+We need to consolidate locations as much as possible, so we'll only leave the locations of coasters where there are two or more in a park. If not, we'll just list it as other
+
+```{r}
+# Group by location: in cases where there is just one coaster at a location, list as other. Leave the rest as is
+
+df <- df %>%
+  group_by(Location) %>%
+  mutate(
+    Location = case_when(
+      n() == 1 ~ "Other",  
+      TRUE ~ Location     
+    )
+  )
+```
+
+```{r}
+head(df)
+```
+
+
+### Imputing Length Column
+
+We need to write a function that can impute the length of a roller coaster. However, string initially look something like this: 2,788.8 ft (850.0 m). We need to do a few things: 
+
+- extract the value in feet
+
+- delete commas 
+
+- return the value as numeric
+
+- needs to include an if else since the metric listed first can be reversed 1,620.9 m (5,318 ft).
+
+```{r}
+extract_length <- function(length_string) {
+  if (grepl("\\d{1,3}(?:,\\d{3})*(?:\\.\\d+)? ft \\(.*\\)", length_string)) {
+    
+    # Extract feet value from formats like "2,600 ft (903 m)" or "45.2 ft (13.8 m)"
+    feet_value <- gsub(".*?([0-9,]+\\.?[0-9]*) ft.*", "\\1", length_string)
+    
+    # Handling commas 
+    feet_value <- gsub(",", "", feet_value)  
+    
+    return(as.numeric(feet_value))  # Convert to numeric
+
+  } else if (grepl("m \\(.* ft\\)", length_string)) {
+    
+    # Extract feet value from formats like "1,620.9 m (5,318 ft)"
+    
+    feet_value <- gsub(".*\\((.*) ft\\).*", "\\1", length_string)
+    
+    # Removing commas again
+    feet_value <- gsub(",", "", feet_value)  
+    
+    return(as.numeric(feet_value))  # Convert to numeric
+  } else {
+    return(NA)  
+  }
+}
+
+df <- df %>%
+  mutate(Length = sapply(Length, extract_length))
+
+```
+
+### Imputing Height Column
+
+We now need to write a function that can impute the height of a roller coaster. 
+
+- extract the value in feet
+
+- delete commas 
+
+- return the value as numeric
+
+- needs to include an if else since the metric listed first can again be reversed
+
+
+```{r}
+library(dplyr)
+
+
+extract_height <- function(height_string) {
+  
+  if (grepl("\\d{1,3}(?:,\\d{3})*(?:\\.\\d+)? ft \\(.*\\)", height_string)) {
+    
+    # Extract feet value (whether listed first or second and in parentheses)
+    feet_value <- gsub(".*?([0-9,]+\\.?[0-9]*) ft.*", "\\1", height_string)
+    feet_value <- gsub(",", "", feet_value) 
+    
+    return(as.numeric(feet_value))  
+    
+  } else if (grepl("m \\(.* ft\\)", height_string)) {
+    
+ 
+    feet_value <- gsub(".*\\((.*) ft\\).*", "\\1", height_string)
+    feet_value <- gsub(",", "", feet_value)  
+    return(as.numeric(feet_value))  
+  } else {
+    return(NA) 
+  }
+}
+
+df <- df %>%
+  mutate(Height = sapply(Height, extract_height))
+```
+
+### Consolidating Model Column
+
+```{r}
+unique(df$Model)
+```
+
+There are over 300 distinct models! I think there could be real value from imputing the model for each coaster, so let's consolidate some of these similarly named models into more generic names.
+
+```{r}
+
+consolidation_map <- c(
+  "Hyper Coaster" = "Hyper Coaster",
+  "Hypercoaster" = "Hyper Coaster",
+  "Hyper coaster" = "Hyper Coaster",
+  "Giga Coaster" = "Hyper Coaster",
+  "Hyper coaster" = "Hyper Coaster",
+  "Custom Looping Coaster" = "Custom Looping Coaster",
+  "Custom Looping" = "Custom Looping Coaster",
+  "Floorless Coaster" = "Floorless Coaster",
+  "Floorless roller coaster" = "Floorless Coaster",
+  "Inverted Coaster" = "Inverted Coaster",
+  "Inverted Coaster - Raptor" = "Inverted Coaster",
+  "Inverted Coaster – Custom" = "Inverted Coaster",
+  "Inverted coaster" = "Inverted Coaster",
+  "Suspended Family Coaster" = "Suspended Coaster",
+  "Suspended Family Coaster 342m" = "Suspended Coaster",
+  "Wild Mouse (large park)" = "Wild Mouse",
+  "Wild Mouse / Large Park" = "Wild Mouse",
+  "SLC (689m Standard)" = "SLC",
+  "Suspended Looping Coaster (689m Standard)" = "SLC"
+)
+
+df <- df %>%
+  mutate(Model = recode(Model, !!!consolidation_map))
+
+```
+
+Let's check the counts and see how much we have consolidated.
+
+```{r}
+df %>%
+  group_by(Model) %>%
+  dplyr::summarise(count = n()) %>%
+  arrange(desc(Model))
+```
+
+Still have quite a few different models! Let's keep consolidating.
+
+```{r}
+# Define a list of patterns and their replacements
+patterns <- c(
+  "Wooden (track coaster|roller coaster|Out and back coaster|Coaster (prefabricated track)|Coaster)" = "Wooden Out and Back",
+  "Wooden Coaster" = "Wooden Out and Back",
+  "custom looping|custom" = "Custom Looping Coaster",
+  "X-Car / Music" = "Custom",
+  "Wing Rider Coaster Accelerator Coaster|Wing Coaster (Intamin)|Wing Coaster" = "Wing Coaster",
+  "Wilde Maus Classic|Wild Mouse/Looping|Wild Mouse 30x20|Wild Mouse (compact park)|Wild Mouse (compact mobile, rev. 2)|Wild Mouse|Wild Maus" = "Wild Mouse",
+  "Wildcat/65m|Wildcat - Unknown|Wildcat - 54m|Wildcat (45m)" = "Wildcat",
+  "Water coasterSuperSplash" = "Water Coaster",
+  "Ultratwister" = "Ultra Twister",
+  "Twister[1]|Twister roller coaster|Twister Coaster 420STD|Twister|Twisted Impulse Coaster" = "Twister",
+  "Topper and I-Box Track|Topper Track – Custom|Topper Track - Custom" = "I-Box",
+  "Tivoli - Large" = "Tivoli",
+  "Suspended (roller coaster|looping coaster|Swinging Coaster|Looping Coaster-Custom|Looping Coaster \\(765m Extended w/ Helix\\)|Looping Coaster|Family Coaster \\(\\d+m\\))" = "Suspended Coaster",
+  "Stand-up (roller coaster|Coaster|)" = "Stand Up",
+  "Spinning Coaster Model 420/4|Spinning Coaster / Sierra Sidewinder" = "Spinning Coaster",
+  "SkyLoop, X-Coaster|SkyLoop XT-150" = "SkyLoop",
+  "Sky Rocket II|Sky Rocket - Indoor" = "Sky Rocket",
+  "Sitting Coaster – Custom|Sitting Coaster|Sitdown Looping|Sitdown Looper|Sitdown|Sit down|Sit Down" = "Sit Down",
+  "Silverarrow" = "Silver Arrow",
+  "Shuttle (roller coaster|coaster|Loop - Flywheel|Loop)" = "Shuttle Coaster",
+  "SLC (Shenlin design|Custom|662m Prototype)" = "SLC",
+  "Raptor (– Prototype|– Custom|\\- Prototype \\(Mirror\\))" = "Raptor",
+  "Racing roller coaster" = "Racing",
+  "Powered coaster|Powered Coaster" = "Powered"
+)
+
+for (pattern in names(patterns)) {
+  df$Model <- gsub(pattern, patterns[pattern], df$Model)
+}
+
+print(df)
+
+```
+
+```{r}
+df$Model <- gsub("Wooden Out and Back \\(prefabricated track\\)|Wooden Out and Back \\(Prefabricated Track\\)|Wooden track coaster|Wooden roller coaster|Wooden Out and back coaster|Wooden Coaster (prefabricated track)|Wooden Coaster (Prefabricated Track)|Wooden Coaster", "Wooden Out and Back", df$Model)
+# Consolidate Wing Coaster variants
+df$Model <- gsub("Wing Coaster \\(Intamin\\)|Wing Coaster", "Wing Coaster", df$Model)
+# Consolidate Wildcat variants
+df$Model <- gsub("Wildcat \\(45m\\)|Wildcat", "Wildcat", df$Model)
+# Consolidate Wild Mouse variants
+df$Model <- gsub("Wild Mouse / Large Park|Wild Mouse \\(large park\\)|Wild Mouse \\(compact park\\)|Wild Mouse \\(compact mobile, rev\\. 2\\)|Wild Mouse", "Wild Mouse", df$Model)
+# Consolidate Twister variants
+df$Model <- gsub("Twister\\[1\\]", "Twister", df$Model)
+
+# Consolidate Suspended Family Coaster variants
+df$Model <- gsub("Suspended Family Coaster 342m", "Suspended Family Coaster", df$Model)
+
+# Consolidate Suspended Coaster variants
+df$Model <- gsub("Suspended Coaster \\(689m Standard\\)", "Suspended Coaster", df$Model)
+df$Model <- gsub("Suspended Catapult Coaster", "Suspended Coaster", df$Model)
+
+# Consolidate Stand-Up variants
+df$Model <- gsub("Stand-up|Stand-Up Coaster", "Stand Up", df$Model)
+
+# Consolidate SLC variants
+df$Model <- gsub("SLC \\(Custom\\)", "SLC", df$Model)
+df$Model <- gsub("SLC \\(689m Standard\\)", "SLC", df$Model)
+df$Model <- gsub("SLC \\(662m Prototype\\)", "SLC", df$Model)
+
+# Consolidate Raptor variants
+df$Model <- gsub("Raptor - Custom", "Raptor", df$Model)
+
+```
+
+```{r}
+# Motorbike Coasters
+df$Model <- gsub("Motorbike roller coaster", "Motorbike Coaster", df$Model)
+df$Model <- gsub("Motorbike Coaster \\(600m\\)", "Motorbike Coaster", df$Model)
+df$Model <- gsub("Motocoaster", "Motorbike Coaster", df$Model)
+df$Model <- gsub("MotoCoaster", "Motorbike Coaster", df$Model)
+
+# Mine Train Coasters
+df$Model <- gsub("Mine train roller coaster", "Mine Train", df$Model)
+df$Model <- gsub("Mine train", "Mine Train", df$Model)
+
+# Mega Coasters
+df$Model <- gsub("Mega coaster", "Mega Coaster", df$Model)
+
+# Looping Coasters
+df$Model <- gsub("Looping roller coaster", "Looping Coaster", df$Model)
+df$Model <- gsub("Looping coaster", "Looping Coaster", df$Model)
+df$Model <- gsub("Looping Star", "Looping Coaster", df$Model)
+df$Model <- gsub("Looping Speedracer", "Looping Coaster", df$Model)
+df$Model <- gsub("Looping Coaster \\(Colossus\\)", "Looping Coaster", df$Model)
+df$Model <- gsub("Loop & Corkscrew", "Looping Coaster", df$Model)
+
+# Launched Coasters
+df$Model <- gsub("Launched roller coaster", "Launched Coaster", df$Model)
+df$Model <- gsub("Launched full-circuit dark ride / roller coaster", "Launched Coaster", df$Model)
+df$Model <- gsub("Launched Loop", "Launched Coaster", df$Model)
+df$Model <- gsub("Launch Coaster \\(Custom\\)", "Launched Coaster", df$Model)
+
+# LSM/LIM Coasters
+df$Model <- gsub("LSM Launch", "LSM Coaster", df$Model)
+df$Model <- gsub("LSM Coaster", "LSM Coaster", df$Model)
+df$Model <- gsub("LSM Blitz Coaster", "LSM Coaster", df$Model)
+df$Model <- gsub("LIM Shuttle Coaster Coaster", "LIM Coaster", df$Model)
+df$Model <- gsub("LIM Coaster", "LIM Coaster", df$Model)
+df$Model <- gsub("LIM Catapult", "LIM Coaster", df$Model)
+
+# Junior Coasters
+df$Model <- gsub("Junior Coaster \\(Custom\\)", "Junior Coaster", df$Model)
+df$Model <- gsub("Junior Coaster \\(85m\\)", "Junior Coaster", df$Model)
+df$Model <- gsub("Junior Coaster \\(335m\\)\\[1\\] Youngstar Coaster \\(Hollywood, Beijing\\) \\[1\\]", "Junior Coaster", df$Model)
+df$Model <- gsub("Junior Coaster \\(335m\\)", "Junior Coaster", df$Model)
+df$Model <- gsub("Junior Coaster \\(207m\\)", "Junior Coaster", df$Model)
+df$Model <- gsub("Junior Boomerang", "Junior Coaster", df$Model)
+
+```
+
+```{r}
+# Jet Star Coasters
+df$Model <- gsub("Jet Star 3 / Jumbo Jet", "Jet Star", df$Model)
+df$Model <- gsub("Jet Star 2", "Jet Star", df$Model)
+df$Model <- gsub("Jet Star", "Jet Star", df$Model)
+
+# Inverted Coasters
+df$Model <- gsub("Inverted coaster - Raptor", "Inverted Coaster", df$Model)
+df$Model <- gsub("Inverted coaster", "Inverted Coaster", df$Model)
+df$Model <- gsub("Inverted Coaster – Custom", "Inverted Coaster", df$Model)
+df$Model <- gsub("Inverted Coaster – Batman", "Inverted Coaster", df$Model)
+df$Model <- gsub("Inverted Coaster / Batman", "Inverted Coaster", df$Model)
+df$Model <- gsub("Inverted Coaster (Batman)", "Inverted Coaster", df$Model)
+df$Model <- gsub("Inverted Coaster", "Inverted Coaster", df$Model)
+
+# IBox Coasters
+df$Model <- gsub("IBox Track", "I-Box", df$Model)
+df$Model <- gsub("I-Box Track", "I-Box", df$Model)
+df$Model <- gsub("I-Box – Custom", "I-Box", df$Model)
+df$Model <- gsub("I-Box", "I-Box", df$Model)
+
+# Hyper Coasters
+df$Model <- gsub("Hypercoaster", "Hyper Coaster", df$Model)
+df$Model <- gsub("Hyper coaster", "Hyper Coaster", df$Model)
+df$Model <- gsub("Hyper GT-X Coaster", "Hyper Coaster", df$Model)
+df$Model <- gsub("Hyper Coaster", "Hyper Coaster", df$Model)
+
+# Half Pipe Coasters
+df$Model <- gsub("Half Pipe Roller Coaster", "Half Pipe Coaster", df$Model)
+df$Model <- gsub("Half Pipe Coaster \\(30m\\)", "Half Pipe Coaster", df$Model)
+df$Model <- gsub("Half Pipe Coaster", "Half Pipe Coaster", df$Model)
+
+# Flying Coasters
+df$Model <- gsub("Flying Dutchman \\(1018m\\)", "Flying Coaster", df$Model)
+df$Model <- gsub("Flying Dutchman", "Flying Coaster", df$Model)
+df$Model <- gsub("Flying Coaster – Manta", "Flying Coaster", df$Model)
+df$Model <- gsub("Flying Coaster – Custom", "Flying Coaster", df$Model)
+df$Model <- gsub("Flying Coaster - Superman", "Flying Coaster", df$Model)
+df$Model <- gsub("Flying Coaster (Manta)", "Flying Coaster", df$Model)
+df$Model <- gsub("Flying Coaster (Custom)", "Flying Coaster", df$Model)
+df$Model <- gsub("Flying Coaster", "Flying Coaster", df$Model)
+
+# Floorless Coasters
+df$Model <- gsub("Floorless roller coaster", "Floorless Coaster", df$Model)
+df$Model <- gsub("Floorless Dive Coaster", "Floorless Coaster", df$Model)
+df$Model <- gsub("Floorless Coaster\\[1\\]", "Floorless Coaster", df$Model)
+df$Model <- gsub("Floorless Coaster / Medusa", "Floorless Coaster", df$Model)
+df$Model <- gsub("Floorless Coaster - Custom", "Floorless Coaster", df$Model)
+df$Model <- gsub("Floorless Coaster", "Floorless Coaster", df$Model)
+df$Model <- gsub("Floorless", "Floorless Coaster", df$Model)
+
+```
+
+```{r}
+# Family Coasters
+df$Model <- gsub("Family roller coaster", "Family Coaster", df$Model)
+df$Model <- gsub("Family gravity coaster 80STD", "Family Coaster", df$Model)
+df$Model <- gsub("Family coaster", "Family Coaster", df$Model)
+df$Model <- gsub("Family MotorBike Launch Coaster", "Family Coaster", df$Model)
+df$Model <- gsub("Family Launched Coaster Elevated Seating Coaster", "Family Coaster", df$Model)
+df$Model <- gsub("Family Launch Coaster", "Family Coaster", df$Model)
+df$Model <- gsub("Family Inverted Coaster", "Family Coaster", df$Model)
+df$Model <- gsub("Family Gravity Coaster 80STD", "Family Coaster", df$Model)
+df$Model <- gsub("Family Coasters/16ft Oval w/helix on left", "Family Coaster", df$Model)
+df$Model <- gsub("Family Boomerang", "Family Coaster", df$Model)
+
+# Eurofighter Coasters
+df$Model <- gsub("Eurofighter", "Euro-Fighter", df$Model)
+df$Model <- gsub("Euro-Fighter – Custom", "Euro-Fighter", df$Model)
+df$Model <- gsub("Euro-Fighter Model 320\\+", "Euro-Fighter", df$Model)
+df$Model <- gsub("Euro-Fighter \\(Iron Shark\\)", "Euro-Fighter", df$Model)
+df$Model <- gsub("Euro-Fighter \\(Custom\\)", "Euro-Fighter", df$Model)
+df$Model <- gsub("Euro-Fighter", "Euro-Fighter", df$Model)
+df$Model <- gsub("Gerstlauer Euro-Fighter 320\\+", "Euro-Fighter", df$Model)
+
+# Double Looping Coasters
+df$Model <- gsub("Double Looping \\(with additional trackway curve\\)", "Double Looping", df$Model)
+df$Model <- gsub("Double Looping", "Double Looping", df$Model)
+df$Model <- gsub("Double Loop with Corkscrew", "Double Looping", df$Model)
+df$Model <- gsub("Double Loop Corkscrew", "Double Looping", df$Model)
+
+# Custom Coasters
+df$Model <- gsub("Custom design", "Custom Coaster", df$Model)
+df$Model <- gsub("Custom MK-900 M", "Custom Coaster", df$Model)
+df$Model <- gsub("Custom MK-900", "Custom Coaster", df$Model)
+df$Model <- gsub("Custom MK-1200", "Custom Coaster", df$Model)
+df$Model <- gsub("Custom Looping Coaster", "Custom Coaster", df$Model)
+df$Model <- gsub("Custom Looping", "Custom Coaster", df$Model)
+df$Model <- gsub("Custom Jet Star 2", "Custom Coaster", df$Model)
+df$Model <- gsub("Custom Hybrid", "Custom Coaster", df$Model)
+df$Model <- gsub("Custom", "Custom Coaster", df$Model)
+df$Model <- gsub("Custom Coaster Coaster", "Custom Coaster", df$Model)
+
+
+# Corkscrew Coasters
+df$Model <- gsub("Corkscrew with Bayerncurve", "Corkscrew", df$Model)
+df$Model <- gsub("Corkscrew", "Corkscrew", df$Model)
+
+# Bobsled Coasters
+df$Model <- gsub("Bobsleigh", "Bobsled Coaster", df$Model)
+df$Model <- gsub("Bobsled roller coaster", "Bobsled Coaster", df$Model)
+df$Model <- gsub("Bobsled coaster", "Bobsled Coaster", df$Model)
+df$Model <- gsub("Bobsled Coaster (Custom)", "Bobsled Coaster", df$Model)
+df$Model <- gsub("Bobsled Coaster", "Bobsled Coaster", df$Model)
+df$Model <- gsub("Bobsled", "Bobsled Coaster", df$Model)
+
+# Accelerator Coasters
+df$Model <- gsub("Accelerator coaster", "Accelerator Coaster", df$Model)
+df$Model <- gsub("Accelerator Coaster", "Accelerator Coaster", df$Model)
+
+# 4th Dimension Coasters
+df$Model <- gsub("4th Dimension Coaster", "4D Coaster", df$Model)
+df$Model <- gsub("4D Interactive Dark Ride", "4D Coaster", df$Model)
+df$Model <- gsub("4D Free Spin", "4D Coaster", df$Model)
+
+```
+
+Final check after using gsub. Able to get the count down to half the original number.
+
+```{r}
+df %>%
+  group_by(Model) %>%
+  dplyr::summarise(count = n()) %>%
+  arrange(desc(Model))
+```
+
+We need to consolidate as much as possible before modeling, so I'm satisfied only leaving the model of coasters where there are two or more in a model category. If not, we'll just list it as other.
+
+```{r}
+# Group by Model: in cases where there is just one coaster at a location, list as other. Leave the rest as is
+
+df <- df %>%
+  group_by(Model) %>%
+  mutate(
+    Model = case_when(
+      n() <= 4| Model == "" ~ "Other",  
+      TRUE ~ Model     
+    )
+  )
+```
+
+```{r}
+df
+```
+
+
+# Joining Ratings Data
+
+```{r}
+if (identical(ratings$coaster_name, df$coaster_name)) {
+  print("The coaster_name columns are identical.")
+} else {
+  print("The coaster_name columns are not identical.")
+}
+
+
+df <- df %>%
+  left_join(ratings 
+            %>% select(coaster_name, coaster_rating), by = "coaster_name")
+df
+```
+
+### Dragon Challenge!!!!!
+
+Due to Dragon Challenge being absolutely legendary, we need to show some love for Hungarian Horntail and Chinese Fireball!
+
+```{r}
+df %>%
+  filter(coaster_name == "Dragon Challenge")
+```
+
+```{r}
+df <- df %>% 
+  mutate(coaster_name = case_when(
+    coaster_name == "Dragon Challenge" & coaster_rating == 85.9 ~ "Hungarian Horntail",
+    coaster_name == "Dragon Challenge" & coaster_rating == 89.1 ~ "Chinese Fireball",
+    TRUE ~ coaster_name
+  ))
+```
+
+
+That join added a ton of duplicate coaster since we had a lot of clones originally. We'll get rid of duplicates later. For now lets impute some ratings for coasters that have many coaster clones around different park chains.
+
+### Rating Imputations
+
+So many Batman: The Ride Clones!
+
+```{r}
+df <- df %>%
+  mutate(coaster_rating = case_when(
+    coaster_name == "Batman: The Ride" & Location == "Six Flags Magic Mountain" ~ 81.9,
+    coaster_name == "Batman: The Ride" & Location == "Six Flags Over Georgia" ~ 83.7,
+    coaster_name == "Batman: The Ride" & Location == "Six Flags Great Adventure" ~ 82,
+    coaster_name == "Batman: The Ride" & Location == "Six Flags St. Louis" ~ 79.3,
+    coaster_name == "Batman: The Ride" & Location == "Six Flags Over Texas" ~ 76,
+    coaster_name == "Batman: The Ride" & Location == "Six Flags Great America" ~ 82.8,
+    TRUE ~ coaster_rating
+  ))
+```
+
+... And Big Thunder Mountain Railroad
+
+```{r}
+df <- df %>%
+  mutate(coaster_rating = case_when(
+    coaster_name == "Big Thunder Mountain Railroad" & Location == "Disneyland" ~ 76,
+    coaster_name == "Big Thunder Mountain Railroad" & Location == "Disneyland Park (Paris)" ~ 83.4,
+    coaster_name == "Big Thunder Mountain Railroad" & Location == "Tokyo Disneyland" ~ 74.7,
+    coaster_name == "Big Thunder Mountain Railroad" & Location == "Disney World (Florida)" ~ 74.3,
+    coaster_name == "Dominator (roller coaster)" ~ 85.9, 
+    coaster_name == "Afterburn (roller coaster)" ~ 93.0, 
+    coaster_name == "Flashback (Six Flags Magic Mountain)" ~ 13.9, 
+    TRUE ~ coaster_rating
+  ))
+
+```
+
+Lets show these duplicates and the coaster ratings we have for each and check to make sure things look better.
+
+```{r}
+df %>%
+  group_by(coaster_name) %>%
+  filter(n() > 1) %>%
+  select(coaster_name, Location, coaster_rating) %>%
+  arrange(coaster_name)
+```
+
+### Removing Duplicated Rows
+
+We need to de-duplicate our data. I'm originally just going to filter to coasters with duplicates and keep the first distinct entry insofar as it has a duplicated coaster rating. For instance, Afterburn from Carowinds was listed four times but there's only one coaster really named Afterburn (rated 93.0), so this code will only keep the first of these entries. But there are six Batman: The Ride clones, each with a different rating. Therefore, even though there are 24 in the dataset, we only want to keep six, so we'll jsut keep the first six with distinct ratings.
+
+```{r}
+df %>%
+  group_by(coaster_name) %>%
+  filter(n() > 1) %>%  
+  select(coaster_name, Location, coaster_rating) %>%
+  arrange(coaster_name) %>%
+  group_by(coaster_name, Location, coaster_rating) %>%
+  filter(row_number() == 1) %>%  
+  ungroup()
+```
+
+```{r}
+df <- df %>%
+  group_by(coaster_name, Location, coaster_rating) %>%
+  filter(row_number() == 1) %>%  
+  ungroup()
+```
+
+Check proportion of NAs for each column
+
+```{r}
+colMeans(is.na(df))
+```
+
+
+### Imputing Status
+
+Check the value counts for Status
+
+```{r}
+df %>%
+  group_by(Status) %>%
+  dplyr::summarise(count = n()) %>%
+  arrange(desc(count))
+```
+
+Let's impute Status.
+
+```{r}
+df <- df %>%
+  mutate(Status = case_when(
+    Status %in% c("Operating") ~ "Operating",
+    Status %in% c("Under construction", "In Production") ~ "Operating",
+    Status %in% c("Discontinued", "Closed", "Closed in 2021", "Not Currently Operating") ~ "Closed",
+    Status == "Chapter 7 bankruptcy; rides dismantled and sold; property sold" ~ "Removed",
+    Status %in% c("SBNO (Standing But Not Operating)", "SBNO December 2019",
+                  "Temporarily Closed", "Temporarily closed",
+                  "Under Maintenance", "closed for maintenance as of july 30 no reopening date known") ~ "Closed",
+    TRUE ~ Status  
+  ))
+
+df <- df %>%
+  mutate(Status = case_when(
+    coaster_name %in% c("Backlot Stunt Coaster", "Batman The Escape", "Batman: The Ride",
+                        "Beast", "Big Thunder Mountain Railroad", "Corkscrew", "Dominator",
+                        "Eurostar", "Flight of Fear", "Flight of the Hippogriff", "Goliath",
+                        "Mr. Freeze", "Nighthawk", "Powder Keg: A Blast into the Wilderness",
+                        "Pandemonium", "Pteranodon Flyers", "Revenge of the Mummy",
+                        "Rock 'n' Roller Coaster Starring Aerosmith", "Seven Dwarfs Mine Train",
+                        "Superman – Ride of Steel", "Superman: Ultimate Flight",
+                        "The Flying Cobras", "The Gold Coaster", "Tron Lightcycle Power Run",
+                        "Zippin Pippin", "Woodstock's Express", "X-Flight") & Status == "" ~ "Operating",
+    Status == "" ~ "M",
+    TRUE ~ Status  
+  ))
+
+```
+
+
+### Imputing Launch Lift System
+
+```{r}
+# unique(df$Lift.launch.system)
+
+df <- df %>%
+  mutate(Lift.launch.system = case_when(
+    grepl("chain", Lift.launch.system, ignore.case = TRUE) ~ "Chain Lift",
+    grepl("lim", Lift.launch.system, ignore.case = TRUE) ~ "LIM Launch",
+    grepl("Linear induction motors", Lift.launch.system, ignore.case = TRUE) ~ "LIM Launch",
+    grepl("lsm", Lift.launch.system, ignore.case = TRUE) ~ "LSM Launch",
+    grepl("Linear synchronous motor", Lift.launch.system, ignore.case = TRUE) ~ "LSM Launch",
+    grepl("Electric Winch Launch / Booster wheels (second lift)", Lift.launch.system, ignore.case = TRUE) ~ "Booster Wheel Lift Hill",
+    grepl("hydraulic", Lift.launch.system, ignore.case = TRUE) ~ "Hydraulic Launch",
+    grepl("tire", Lift.launch.system, ignore.case = TRUE) ~ "Tire Lift",
+    grepl("flywheel", Lift.launch.system, ignore.case = TRUE) ~ "Flywheel Launch",
+    grepl("cable", Lift.launch.system, ignore.case = TRUE) ~ "Cable Lift",
+    grepl("spiral", Lift.launch.system, ignore.case = TRUE) ~ "Spiral Lift",
+    TRUE ~ Lift.launch.system  
+  ))
+```
+
+
+```{r}
+df %>%
+  group_by(Lift.launch.system) %>%
+  dplyr::summarise(count = n()) %>%
+  arrange(desc(count))
+```
+
+Lets just take the Launch / Lift systems where there are more than 10 in its category.
+
+```{r}
+df <- df %>%
+  group_by(Lift.launch.system) %>%
+  mutate(
+    Lift.launch.system = case_when(
+      n() < 10 | Lift.launch.system == "" ~ "Other",  
+      TRUE ~ Lift.launch.system     
+    )
+  )
+```
+
+```{r}
+df <- df %>%
+  rename(launch_system = `Lift.launch.system`)
+```
+
+
+We realistically don't get value from over half of our variables, so we'll get rid of these, which have a large portion of NAs and useless information for model creation.
+
+
+```{r}
+df <- df %>%
+  select(
+    -Speed, -Opening.date, -Height.restriction, -Trains, -Park.section, -Capacity,
+    -Designer, -Drop, -Soft.opening.date, -Fast.Lane.available, -Replaced, -Track.layout, -Fastrack.available, -Soft.opening.date.1, -Closing.date, -Opened, -Replaced.by, -Website, -Flash.Pass.Available, -Must.transfer.from.wheelchair, -Theme, -Single.rider.line.available, -Restraint.Style, -Flash.Pass.available, -Acceleration, -Restraints, -Name, -latitude, -longitude, -Type, -opening_date_clean, -speed1, -speed2, -speed1_value, -speed1_unit, -height_unit, -height_value, -height_ft, -Cost, -Max.vertical.angle, -Inversions
+  )
+```
+
+Check the number of dinstincts by variables. 
+
+
+
+```{r}
+df %>%
+  summarise_all(~ n_distinct(.))
+```
+
+
+### Manufacturer Imputation
+
+Number of distincts by manufacturer
+
+```{r}
+df %>%
+  group_by(Manufacturer) %>%
+  dplyr::summarise(count = n()) %>%
+  arrange(desc(count))
+```
+
+
+```{r}
+df <- df %>%
+  mutate(Manufacturer = case_when(
+    grepl("Taft Broadcasting", Manufacturer, ignore.case = TRUE) ~ "Taft Broadcasting",
+    grepl("Mack Rides", Manufacturer, ignore.case = TRUE) ~ "Mack Rides",
+    grepl("Arrow Dynamics|Arrow Development", Manufacturer, ignore.case = TRUE) ~ "Arrow Dynamics",
+    grepl("Bolliger & Mabillard", Manufacturer, ignore.case = TRUE) ~ "Bolliger & Mabillard",
+    grepl("Premier Rides", Manufacturer, ignore.case = TRUE) ~ "Premier Rides",
+    grepl("Philadelphia Toboggan Coasters", Manufacturer, ignore.case = TRUE) ~ "Philadelphia Toboggan Coasters",
+    grepl("Vekoma", Manufacturer, ignore.case = TRUE) ~ "Vekoma",
+    grepl("Zamperla", Manufacturer, ignore.case = TRUE) ~ "Zamperla",
+    grepl("Custom Coasters International", Manufacturer, ignore.case = TRUE) ~ "Custom Coasters International",
+    grepl("Great Coasters International", Manufacturer, ignore.case = TRUE) ~ "Great Coasters International",
+    grepl("Gerstlauer", Manufacturer, ignore.case = TRUE) ~ "Gerstlauer",
+    grepl("Rauenhorst Corporation", Manufacturer, ignore.case = TRUE) ~ "Rauenhorst Corporation",
+    grepl("International Coasters, Inc.", Manufacturer, ignore.case = TRUE) ~ "International Coasters, Inc.",
+    grepl("Zierer", Manufacturer, ignore.case = TRUE) ~ "Zierer",
+    grepl("D. H. Morgan Manufacturing", Manufacturer, ignore.case = TRUE) ~ "D. H. Morgan Manufacturing",
+    grepl("Intamin", Manufacturer, ignore.case = TRUE) ~ "Intamin",
+    grepl("Canada's Wonderland", Manufacturer, ignore.case = TRUE) ~ "Canada's Wonderland",
+    grepl("Anton Schwarzkopf", Manufacturer, ignore.case = TRUE) ~ "Anton Schwarzkopf",
+    grepl("Rocky Mountain Construction", Manufacturer, ignore.case = TRUE) ~ "Rocky Mountain Construction",
+    grepl("Kings Island", Manufacturer, ignore.case = TRUE) ~ "Kings Island",
+    grepl("Dinn Corporation", Manufacturer, ignore.case = TRUE) ~ "Dinn Corporation",
+    grepl("S&S – Sansei Technologies", Manufacturer, ignore.case = TRUE) ~ "S&S – Sansei Technologies",
+    grepl("E&F Miler Industries", Manufacturer, ignore.case = TRUE) ~ "E&F Miler Industries",
+    TRUE ~ Manufacturer  # Retain the original value if none of the conditions are met
+  ))
+
+```
+
+
+Lets just take the manufacturers where there are more than 5 in its category.
+
+
+```{r}
+df <- df %>%
+  group_by(Manufacturer) %>%
+  mutate(
+    Manufacturer = case_when(
+      n() < 5 | Manufacturer == "" ~ "Other",  
+      TRUE ~ Manufacturer     
+    )
+  ) 
+```
+
+### Last Imputation - Duration
+
+Check the most common durations of coasters - I want to get the raw number of seconds for each.
+
+```{r}
+df %>%
+  group_by(Duration) %>%
+  dplyr::summarise(count = n()) %>%
+  arrange(desc(count))
+  
+```
+
+Trim down weird entries for duration time.
+
+```{r}
+df <- df %>%
+  group_by(Duration) %>%
+  mutate(
+    Duration = case_when(
+      n() < 3 | Duration == "" ~ "Other",  
+      TRUE ~ Duration     
+    )
+  )
+```
+
+Here is a function that can return the duration in seconds for each coaster. It ignores coasters that are other (returns NA instead), and gathers the minutes before ":" and the seconds after ":" and gives a raw second count.
+
+```{r}
+library(dplyr)
+library(stringr)
+library(lubridate)
+
+convert_to_seconds <- function(x) {
+  if (x == "Other") return(NA_real_)
+  
+  x <- str_remove_all(x, "[~]")
+  x <- str_trim(x)
+  
+  if (str_detect(x, "^\\d+:\\d+$")) {
+    return(period_to_seconds(hms(paste0("00:", x))))
+  } else if (str_detect(x, "minute")) {
+    return(as.numeric(str_extract(x, "\\d+")) * 60)
+  } else if (str_detect(x, "second")) {
+    return(as.numeric(str_extract(x, "\\d+")))
+  } else {
+    return(NA_real_)
+  }
+}
+
+df <- df %>%
+  mutate(Duration = as.numeric(sapply(Duration, convert_to_seconds)))
+
+```
+
+Check how many distinct coasters there are.
+
+```{r}
+df %>% 
+  distinct()
+```
+
+Finally, we'll trim the data down to coasters only with actual ratings and get rid of the parentheses after each coaster name.
+
+```{r}
+df <- df %>%
+  mutate(coaster_name = str_replace(coaster_name, "\\s*\\([^)]+\\).*$", "")) %>%
+  filter(!is.na(coaster_rating))
+```
+
+```{r}
+df
+```
+
+Final data trims
+
+```{r}
+df <- df %>%
+  select(-G.force)
+```
+
+
+### Write to CSV file
+
+
+```{r}
+write.csv(df, "/Users/brian/Downloads/COASTER/clean_coaster_full.csv", row.names = FALSE)
+```
+
+
+###########################################################################
+
+
