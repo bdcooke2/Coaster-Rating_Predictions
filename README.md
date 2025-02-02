@@ -1,4 +1,4 @@
-# Coaster_Rating_Predictions
+# Coaster Rating Predictions
 
 Background: 
 
